@@ -4,8 +4,16 @@ frontend/.next
 compliance-agent/node_modules
 compliance-agent/dist
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
 # Environment and secrets
 .env
 .env.local
 .env.*.local
-*.env
+
+# IDE
+.cursor/settings.json

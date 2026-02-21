@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-preprocessing-pipeline
+  namespace: default
+  labels:
+    load-type: flexible
+    energy-priority: low
+    c2g/managed: "true"
+    app: data-preprocessing-pipeline
+spec:
+  replicas: 50
+  selector:
+    matchLabels:
+      app: data-preprocessing-pipeline
+  template:
+    metadata:
+      labels:
+        load-type: flexible
+        energy-priority: low
+        c2g/managed: "true"
+        app: data-preprocessing-pipeline
+      annotations:
+        c2g/power-per-replica-kw: "0.5"
+        c2g/idle-power-kw: "10"
+        c2g/shed-threshold-mwh: "200"
+        c2g/workload-type: cpu-batch
+        c2g/criticality: flexible
+        c2g/max-replicas: "50"
+    spec:
+      containers:
+        - name: pipeline
+          image: busybox
+          command: ["sh", "-c", "while true; do sleep 3600; done"]
+          resources:
+            requests:
+              cpu: "2"
+              memory: "8Gi"
+            limits:
+              cpu: "2"
+              memory: "8Gi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "2"]
+      terminationGracePeriodSeconds: 30

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { tickSimulation, triggerManualShed } from "@/lib/simulation";
 import type { ERCOTData, ComputeData, FinancialData, ActionLogEntry } from "@/lib/simulation";
 import Header from "./Header";
+import StatusBar from "./StatusBar";
 import GridPriceGauge from "./GridPriceGauge";
 import ComputeLoadChart from "./ComputeLoadChart";
 import LMPChart from "./LMPChart";
@@ -12,6 +13,10 @@ import ActionFeed from "./ActionFeed";
 import FinancialView from "./FinancialView";
 import NamespaceTable from "./NamespaceTable";
 import MigrationStatus from "./MigrationStatus";
+import TrainingLossChart from "./TrainingLossChart";
+import PowerGauge from "./PowerGauge";
+import PowerTimeline from "./PowerTimeline";
+import ShedSimulator from "./ShedSimulator";
 
 export default function Dashboard() {
   const [ercot, setErcot] = useState<ERCOTData | null>(null);
@@ -50,39 +55,39 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-950">
+      <StatusBar />
       <Header
-          gridStatus={ercot.gridStatus}
-          timestamp={ercot.timestamp}
-          onManualShed={triggerManualShed}
-          logs={logs}
-          ercot={ercot}
-          compute={compute}
-          financial={financial}
-        />
+        gridStatus={ercot.gridStatus}
+        timestamp={ercot.timestamp}
+        onManualShed={triggerManualShed}
+        logs={logs}
+        ercot={ercot}
+        compute={compute}
+        financial={financial}
+      />
 
       <main className="p-4 md:p-5 lg:p-6 xl:px-8 2xl:px-10 max-w-[2400px] mx-auto">
         <div className="grid grid-cols-12 gap-4 lg:gap-5 xl:gap-6 auto-rows-min">
-          {/* Row 1: Status cards + Compute chart */}
+          {/* Row 1: Power Gauge + Grid Price + Delta + Compute chart */}
           <div className="col-span-12 md:col-span-6 lg:col-span-3 xl:col-span-3">
-            <GridPriceGauge data={ercot} />
+            <PowerGauge />
           </div>
           <div className="col-span-12 md:col-span-6 lg:col-span-3 xl:col-span-2">
-            <DeltaIndicator
-              shedReadyMW={compute.shedReadyMW}
-              totalLoadMW={compute.totalLoadMW}
-              criticalLoadMW={compute.criticalLoadMW}
-              deferredLoadMW={compute.deferredLoadMW}
-              activePods={compute.activePods}
-              pausedPods={compute.pausedPods}
-              totalPods={compute.totalPods}
-              gridStatus={ercot.gridStatus}
-            />
+            <GridPriceGauge data={ercot} />
           </div>
           <div className="col-span-12 lg:col-span-6 xl:col-span-7">
             <ComputeLoadChart data={compute} />
           </div>
 
-          {/* Row 2: Namespaces + Migration + LMP */}
+          {/* Row 2: Power Timeline + Shed Simulator */}
+          <div className="col-span-12 lg:col-span-8 xl:col-span-8">
+            <PowerTimeline />
+          </div>
+          <div className="col-span-12 lg:col-span-4 xl:col-span-4">
+            <ShedSimulator />
+          </div>
+
+          {/* Row 3: Namespaces + Migration + LMP */}
           <div className="col-span-12 lg:col-span-5 xl:col-span-4">
             <NamespaceTable namespaces={compute.namespaces} />
           </div>
@@ -93,18 +98,23 @@ export default function Dashboard() {
             <LMPChart data={ercot} />
           </div>
 
-          {/* Row 3: Financial + Action Feed */}
+          {/* Row 4: Financial + Action Feed */}
           <div className="col-span-12 lg:col-span-8 xl:col-span-8">
             <FinancialView financial={financial} ercot={ercot} />
           </div>
           <div className="col-span-12 lg:col-span-4 xl:col-span-4">
             <ActionFeed logs={logs} />
           </div>
+
+          {/* Row 5: Training survival — checkpoint/resume during grid emergency */}
+          <div className="col-span-12">
+            <TrainingLossChart />
+          </div>
         </div>
       </main>
 
       <footer className="border-t border-gray-800 px-6 py-3 text-center text-[10px] text-gray-600">
-        C2G Orchestrator v0.1.0 &middot; ERCOT RTM Simulation &middot; SB 6 Compliant &middot; Built for Texas Grid
+        C2G Orchestrator v1.0.0 &middot; ERCOT RTM &middot; 100MW Facility &middot; SB 6 Compliant &middot; Built for Texas Grid
       </footer>
     </div>
   );

@@ -1,0 +1,64 @@
+# Mock AI training workload for "training survives grid emergency" demo.
+# Labels load-type: flexible, energy-priority: low so C2G will shed these pods
+# during a price spike. The container handles SIGTERM and checkpoints to /checkpoints.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: checkpoint-storage
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName: optional — use cluster default or a ReadWriteMany class
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mock-ai-training
+  namespace: default
+  labels:
+    app: mock-ai-training
+    load-type: flexible
+    energy-priority: low
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mock-ai-training
+  template:
+    metadata:
+      labels:
+        app: mock-ai-training
+        load-type: flexible
+        energy-priority: low
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: training
+          # Build from Dockerfile: docker build -t mock-ai-training:latest demo/mock-training-job
+          # For kind: kind load docker-image mock-ai-training:latest --name c2g-demo
+          image: mock-ai-training:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CHECKPOINT_DIR
+              value: "/checkpoints"
+          volumeMounts:
+            - name: checkpoints
+              mountPath: /checkpoints
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          lifecycle:
+            # Give the main process time to receive SIGTERM and run its handler
+            preStop:
+              exec:
+                command: ["sleep", "2"]
+      volumes:
+        - name: checkpoints
+          persistentVolumeClaim:
+            claimName: checkpoint-storage

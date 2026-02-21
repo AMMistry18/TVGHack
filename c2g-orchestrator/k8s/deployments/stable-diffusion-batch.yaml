@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stable-diffusion-batch
+  namespace: default
+  labels:
+    load-type: flexible
+    energy-priority: low
+    c2g/managed: "true"
+    app: stable-diffusion-batch
+spec:
+  replicas: 15
+  selector:
+    matchLabels:
+      app: stable-diffusion-batch
+  template:
+    metadata:
+      labels:
+        load-type: flexible
+        energy-priority: low
+        c2g/managed: "true"
+        app: stable-diffusion-batch
+      annotations:
+        c2g/power-per-replica-kw: "8"
+        c2g/idle-power-kw: "20"
+        c2g/shed-threshold-mwh: "500"
+        c2g/workload-type: gpu-training
+        c2g/criticality: flexible
+        c2g/max-replicas: "15"
+    spec:
+      containers:
+        - name: batch
+          image: nvidia/cuda:12.0-base
+          command: ["sh", "-c", "while true; do sleep 3600; done"]
+          resources:
+            requests:
+              cpu: "6"
+              memory: "48Gi"
+            limits:
+              cpu: "6"
+              memory: "48Gi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "2"]
+      terminationGracePeriodSeconds: 30
