@@ -2,16 +2,21 @@
 
 import { Zap, Radio, ShieldAlert } from "lucide-react";
 import { cn, getStatusColor, getStatusBg } from "@/lib/utils";
-import type { GridStatus } from "@/lib/simulation";
+import type { GridStatus, ERCOTData, ComputeData, FinancialData, ActionLogEntry } from "@/lib/simulation";
 import { useState } from "react";
+import ComplianceReportButton from "./ComplianceReportButton";
 
 interface Props {
   gridStatus: GridStatus;
   timestamp: Date;
   onManualShed: () => void;
+  logs: ActionLogEntry[];
+  ercot: ERCOTData;
+  compute: ComputeData;
+  financial: FinancialData;
 }
 
-export default function Header({ gridStatus, timestamp, onManualShed }: Props) {
+export default function Header({ gridStatus, timestamp, onManualShed, logs, ercot, compute, financial }: Props) {
   const [confirming, setConfirming] = useState(false);
   const isActive = gridStatus === "scarcity" || gridStatus === "emergency";
 
@@ -72,6 +77,13 @@ export default function Header({ gridStatus, timestamp, onManualShed }: Props) {
             GRID: {gridStatus.toUpperCase()}
           </span>
         </div>
+
+        <ComplianceReportButton
+          logs={logs}
+          ercot={ercot}
+          compute={compute}
+          financial={financial}
+        />
 
         <button
           onClick={handleShed}

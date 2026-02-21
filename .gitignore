@@ -1,2 +1,11 @@
+# Dependencies and build
 frontend/node_modules
 frontend/.next
+compliance-agent/node_modules
+compliance-agent/dist
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.env
