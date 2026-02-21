@@ -3,6 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 const COMPLIANCE_AGENT_URL =
   process.env.COMPLIANCE_AGENT_URL || "http://localhost:4000";
 
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase();
+    if (msg.includes("econnrefused") || msg.includes("fetch failed") || msg.includes("connection"))
+      return "Compliance agent unreachable. Start it with: cd compliance-agent && npm run dev (and set GOOGLE_GENERATIVE_AI_API_KEY in compliance-agent/.env)";
+    return err.message;
+  }
+  return "Report generation failed";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -13,10 +23,8 @@ export async function POST(request: NextRequest) {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: (data as { error?: string }).error || "Report generation failed" },
-        { status: res.status }
-      );
+      const error = (data as { error?: string }).error || res.statusText || "Report generation failed";
+      return NextResponse.json({ error }, { status: res.status });
     }
     const pdf = await res.arrayBuffer();
     const filename =
@@ -30,7 +38,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Report generation failed";
+    const message = getErrorMessage(err);
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
