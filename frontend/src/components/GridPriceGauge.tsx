@@ -23,8 +23,12 @@ export default function GridPriceGauge({ data }: Props) {
       : "#10b981";
 
   const radius = 80;
-  const circumference = Math.PI * radius;
-  const strokeDashoffset = circumference - (pricePercent / 100) * circumference;
+  const arcLength = Math.PI * radius;
+  const strokeDashoffset = arcLength - (pricePercent / 100) * arcLength;
+
+  const cx = 100;
+  const cy = 110;
+  const arcPath = `M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`;
 
   return (
     <div className="grid-card p-5 lg:p-6 h-full flex flex-col">
@@ -58,19 +62,19 @@ export default function GridPriceGauge({ data }: Props) {
         <div className="relative w-full max-w-[220px]">
           <svg viewBox="0 0 200 120" className="w-full h-auto">
             <path
-              d="M 10 110 A 80 80 0 0 1 190 110"
+              d={arcPath}
               fill="none"
               stroke="#1f2937"
               strokeWidth="12"
               strokeLinecap="round"
             />
             <path
-              d="M 10 110 A 80 80 0 0 1 190 110"
+              d={arcPath}
               fill="none"
               stroke={arcColor}
               strokeWidth="12"
               strokeLinecap="round"
-              strokeDasharray={circumference}
+              strokeDasharray={arcLength}
               strokeDashoffset={strokeDashoffset}
               className="transition-all duration-700 ease-out"
               style={{

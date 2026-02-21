@@ -66,9 +66,9 @@ export default function ComplianceReportButton({
         throw new Error(data.error || `Report failed: ${res.status}`);
       }
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank");
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Report generation failed");
     } finally {

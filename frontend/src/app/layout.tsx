@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "C2G Orchestrator | Compute-to-Grid",
+  title: "StargateOS | Grid-Aware Compute",
   description:
     "Real-time ERCOT grid response automation for data center workload management. SB 6 compliant.",
 };

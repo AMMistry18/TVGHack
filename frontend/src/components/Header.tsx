@@ -1,6 +1,6 @@
 "use client";
 
-import { Zap, Radio, ShieldAlert } from "lucide-react";
+import { Zap, Radio, ShieldAlert, FlaskConical } from "lucide-react";
 import { cn, getStatusColor, getStatusBg } from "@/lib/utils";
 import type { GridStatus, ERCOTData, ComputeData, FinancialData, ActionLogEntry } from "@/lib/simulation";
 import { useState } from "react";
@@ -10,13 +10,14 @@ interface Props {
   gridStatus: GridStatus;
   timestamp: Date;
   onManualShed: () => void;
+  onDemoSpike: () => void;
   logs: ActionLogEntry[];
   ercot: ERCOTData;
   compute: ComputeData;
   financial: FinancialData;
 }
 
-export default function Header({ gridStatus, timestamp, onManualShed, logs, ercot, compute, financial }: Props) {
+export default function Header({ gridStatus, timestamp, onManualShed, onDemoSpike, logs, ercot, compute, financial }: Props) {
   const [confirming, setConfirming] = useState(false);
   const isActive = gridStatus === "scarcity" || gridStatus === "emergency";
 
@@ -48,11 +49,11 @@ export default function Header({ gridStatus, timestamp, onManualShed, logs, erco
         </div>
         <div>
           <h1 className="text-lg font-black tracking-tight">
-            <span className="text-white">C2G</span>{" "}
-            <span className="text-gray-500">Orchestrator</span>
+            <span className="text-white">Stargate</span>
+            <span className="text-gray-500">OS</span>
           </h1>
           <div className="text-[10px] text-gray-600 tracking-wider uppercase">
-            Compute-to-Grid &middot; ERCOT Texas
+            Grid-Aware Compute &middot; ERCOT Texas
           </div>
         </div>
       </div>
@@ -84,6 +85,15 @@ export default function Header({ gridStatus, timestamp, onManualShed, logs, erco
           compute={compute}
           financial={financial}
         />
+
+        <button
+          onClick={onDemoSpike}
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-violet-500/40 bg-violet-500/10 text-violet-400 text-xs font-bold hover:bg-violet-500/20 hover:border-violet-500/60 transition-all duration-300 whitespace-nowrap"
+        >
+          <FlaskConical className="w-4 h-4" />
+          <span className="hidden sm:inline">Demo Spike</span>
+          <span className="sm:hidden">Demo</span>
+        </button>
 
         <button
           onClick={handleShed}

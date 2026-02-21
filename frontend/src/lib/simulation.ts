@@ -51,7 +51,7 @@ export interface ActionLogEntry {
   id: string;
   timestamp: Date;
   type: "info" | "warning" | "action" | "success" | "critical";
-  source: "ERCOT" | "C2G Agent" | "K8s Controller" | "Financial" | "System" | "Migration";
+  source: "ERCOT" | "StargateOS" | "K8s Controller" | "Financial" | "System" | "Migration";
   message: string;
 }
 
@@ -69,7 +69,9 @@ export interface FinancialData {
 let simulationTime = new Date();
 let pricePhase = 0;
 let spikeActive = false;
-let spikeTimer = 0;
+let spikeTick = 0;
+let spikeTotalTicks = 0;
+let previousGridStatus: GridStatus = "normal";
 let accumulatedSavings = 0;
 let accumulatedDR = 0;
 let accumulatedCloudSpend = 0;
@@ -110,19 +112,25 @@ export function tickSimulation(): {
 
   if (shouldTriggerSpike() && !spikeActive) {
     spikeActive = true;
-    spikeTimer = 8 + Math.floor(Math.random() * 12);
-    addLog({ type: "critical", source: "ERCOT", message: `SCED Interval Price Spike detected. Emergency pricing active.` });
+    spikeTick = 0;
+    spikeTotalTicks = 12 + Math.floor(Math.random() * 6);
+    addLog({ type: "warning", source: "ERCOT", message: "SCED interval detecting abnormal pricing. Grid stress rising." });
   }
 
   let lmpPrice: number;
   if (spikeActive) {
-    spikeTimer--;
-    const intensity = Math.sin(spikeTimer * 0.5) * 0.3 + 0.7;
-    lmpPrice = 1500 + Math.random() * 3500 * intensity;
-    if (spikeTimer <= 0) {
+    const progress = spikeTick / spikeTotalTicks;
+    // Bell curve: ramps up through elevated → scarcity → emergency, then back down
+    const curve = Math.sin(progress * Math.PI);
+    // Map curve 0→1→0 to price: base → peak → base
+    // curve ~0.0-0.3 = elevated ($600-1500), ~0.3-0.7 = scarcity ($1500-3000), ~0.7-1.0 = emergency ($3000-5000)
+    const peakPrice = 4000 + Math.random() * 1000;
+    lmpPrice = 50 + curve * peakPrice + Math.random() * 100;
+
+    spikeTick++;
+    if (spikeTick >= spikeTotalTicks) {
       spikeActive = false;
-      addLog({ type: "success", source: "ERCOT", message: "Price spike subsiding. Returning to normal market conditions." });
-      addLog({ type: "action", source: "Migration", message: "Initiating workload repatriation from PJM-East (us-east-1) back to ERCOT local cluster." });
+      spikeTick = 0;
     }
   } else {
     lmpPrice = getBasePrice() + Math.sin(pricePhase) * 10;
@@ -135,6 +143,38 @@ export function tickSimulation(): {
   if (lmpPrice > 3000) { gridStatus = "emergency"; eeaLevel = 3; }
   else if (lmpPrice > 1500) { gridStatus = "scarcity"; eeaLevel = 2; }
   else if (lmpPrice > 500) { gridStatus = "elevated"; eeaLevel = 1; }
+
+  // Log tier transitions with clear explanations
+  if (gridStatus !== previousGridStatus) {
+    if (gridStatus === "elevated" && previousGridStatus === "normal") {
+      addLog({ type: "info", source: "ERCOT", message: `⚠ TIER 1 — ELEVATED: LMP crossed $500/MWh ($${lmpPrice.toFixed(0)}). Grid stress detected.` });
+      addLog({ type: "action", source: "StargateOS", message: "Tier 1 response: Pre-staging checkpoint saves on non-critical namespaces. Pre-warming migration targets in PJM-East." });
+      addLog({ type: "action", source: "K8s Controller", message: "Pausing 450 low-priority batch pods. Holding critical and medium workloads." });
+    } else if (gridStatus === "scarcity" && previousGridStatus === "elevated") {
+      addLog({ type: "warning", source: "ERCOT", message: `⚠ TIER 2 — SCARCITY: LMP crossed $1,500/MWh ($${lmpPrice.toFixed(0)}). EEA Level 2 issued.` });
+      addLog({ type: "action", source: "StargateOS", message: "Tier 2 response: Initiating cross-grid migration. Moving latency-insensitive workloads to PJM-East (AWS us-east-1)." });
+      addLog({ type: "action", source: "Migration", message: "Migrating llama-training (600 pods) and batch-inference (200 pods) to remote cluster. Saving checkpoints first." });
+      addLog({ type: "action", source: "K8s Controller", message: "Draining model-eval namespace. Local deferred load dropping to ~10MW." });
+    } else if (gridStatus === "emergency") {
+      addLog({ type: "critical", source: "ERCOT", message: `🚨 TIER 3 — EMERGENCY: LMP crossed $3,000/MWh ($${lmpPrice.toFixed(0)}). EEA Level 3 — full curtailment.` });
+      addLog({ type: "action", source: "StargateOS", message: "Tier 3 response: Full load shed protocol. Only critical workloads remain on local grid." });
+      addLog({ type: "action", source: "K8s Controller", message: "All non-critical pods drained. Analytics and model-eval paused. 1,100 pods offline locally." });
+      addLog({ type: "action", source: "Migration", message: "700 pods active on PJM-East (us-east-1). 20MW shifted off ERCOT grid." });
+      addLog({ type: "action", source: "StargateOS", message: "Signaling on-site battery backup for 45MW critical load (customer-api, real-time-inference)." });
+    } else if (gridStatus === "scarcity" && previousGridStatus === "emergency") {
+      addLog({ type: "success", source: "ERCOT", message: `↓ De-escalating to TIER 2 — SCARCITY: LMP falling below $3,000/MWh ($${lmpPrice.toFixed(0)}). EEA downgraded to Level 2.` });
+      addLog({ type: "action", source: "StargateOS", message: "Releasing battery backup. Resuming medium-priority namespaces locally. Migration still active." });
+    } else if (gridStatus === "elevated" && previousGridStatus === "scarcity") {
+      addLog({ type: "success", source: "ERCOT", message: `↓ De-escalating to TIER 1 — ELEVATED: LMP falling below $1,500/MWh ($${lmpPrice.toFixed(0)}). EEA Level 1.` });
+      addLog({ type: "action", source: "Migration", message: "Initiating workload repatriation from PJM-East (us-east-1) back to ERCOT local cluster." });
+      addLog({ type: "action", source: "K8s Controller", message: "Re-scheduling deferred pods locally. Repatriation ETA: ~60s." });
+    } else if (gridStatus === "normal" && previousGridStatus !== "normal") {
+      addLog({ type: "success", source: "ERCOT", message: `✓ ALL CLEAR: LMP returned below $500/MWh ($${lmpPrice.toFixed(0)}). Grid conditions normal.` });
+      addLog({ type: "success", source: "StargateOS", message: "All tiers disengaged. Full local workload restored. Repatriation complete." });
+      addLog({ type: "info", source: "Financial", message: `Spike event concluded. Savings accrued: $${Math.round(accumulatedSavings).toLocaleString()} avoided cost, $${Math.round(accumulatedDR).toLocaleString()} DR revenue.` });
+    }
+    previousGridStatus = gridStatus;
+  }
 
   const totalCapacity = 85000;
   const baseDemand = 62000 + Math.sin(pricePhase * 0.3) * 5000;
@@ -163,12 +203,6 @@ export function tickSimulation(): {
     migratedPods = 700;
     migrationStatus = "active";
     migrationLatency = 1200 + Math.random() * 800;
-    if (!ACTION_LOG.find(l => l.message.includes("EEA3") && Date.now() - l.timestamp.getTime() < 10000)) {
-      addLog({ type: "critical", source: "C2G Agent", message: `EEA3 ACTIVATED: Initiating full load shed protocol.` });
-      addLog({ type: "action", source: "K8s Controller", message: `Draining ${pausedPods} pods locally. Migrating ${migratedPods} pods to PJM-East.` });
-      addLog({ type: "action", source: "Migration", message: `Burst-to-cloud: ${migratedPods} pods live on AWS us-east-1 (PJM grid). ${remoteLoadMW.toFixed(1)}MW shifted off ERCOT.` });
-      addLog({ type: "action", source: "C2G Agent", message: `Signaling on-site battery systems to assume ${Math.round(criticalLoadMW)}MW critical load.` });
-    }
   } else if (gridStatus === "scarcity") {
     deferredLoadMW = 8 + Math.random() * 4;
     remoteLoadMW = 25 + Math.random() * 5;
@@ -176,18 +210,10 @@ export function tickSimulation(): {
     migratedPods = 800;
     migrationStatus = "migrating";
     migrationLatency = 800 + Math.random() * 600;
-    if (!ACTION_LOG.find(l => l.message.includes("High-Price") && Date.now() - l.timestamp.getTime() < 10000)) {
-      addLog({ type: "warning", source: "C2G Agent", message: `Initiating "High-Price" protocol. LMP at $${lmpPrice.toFixed(0)}/MWh.` });
-      addLog({ type: "action", source: "Migration", message: `Migrating ${migratedPods} latency-insensitive pods to PJM-East (us-east-1). ETA: ${Math.round(migrationLatency)}ms.` });
-      addLog({ type: "action", source: "K8s Controller", message: `Saving training checkpoints. Pausing ${pausedPods} remaining low-priority pods.` });
-    }
   } else if (gridStatus === "elevated") {
     deferredLoadMW = 35 + Math.random() * 5;
     pausedPods = 450;
     migrationStatus = "idle";
-    if (!ACTION_LOG.find(l => l.message.includes("Elevated") && Date.now() - l.timestamp.getTime() < 15000)) {
-      addLog({ type: "info", source: "C2G Agent", message: `Elevated pricing detected ($${lmpPrice.toFixed(0)}/MWh). Pre-staging checkpoint saves. Migration targets pre-warmed.` });
-    }
   } else {
     deferredLoadMW = baseDeferred + Math.random() * 3;
     migrationStatus = "idle";
@@ -325,8 +351,15 @@ export function getComputeHistory() {
 
 export function triggerManualShed() {
   spikeActive = true;
-  spikeTimer = 6;
-  addLog({ type: "critical", source: "System", message: "MANUAL GRID SHED initiated by operator." });
-  addLog({ type: "action", source: "C2G Agent", message: "Emergency protocol engaged. Draining all non-critical workloads." });
-  addLog({ type: "action", source: "Migration", message: "Burst-to-cloud triggered. Migrating eligible workloads to PJM-East (AWS us-east-1)." });
+  spikeTick = 0;
+  spikeTotalTicks = 10;
+  addLog({ type: "critical", source: "System", message: "MANUAL GRID SHED initiated by operator. Forcing emergency spike." });
+}
+
+export function triggerDemoSpike() {
+  if (spikeActive) return;
+  spikeActive = true;
+  spikeTick = 0;
+  spikeTotalTicks = 18;
+  addLog({ type: "info", source: "System", message: "[DEMO] Simulated grid stress event starting. Watch the dashboard escalate through Tier 1 → Tier 2 → Tier 3 and back." });
 }

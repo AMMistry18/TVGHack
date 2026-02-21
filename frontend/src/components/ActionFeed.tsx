@@ -31,7 +31,7 @@ export default function ActionFeed({ logs }: Props) {
       <div className="flex items-center gap-2 mb-4">
         <Terminal className="w-4 h-4 text-emerald-400" />
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
-          C2G Action Feed
+          StargateOS Feed
         </h3>
         <div className="ml-auto flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">

@@ -4,7 +4,7 @@ export interface ActionLogEntry {
   id: string;
   timestamp: string; // ISO
   type: "info" | "warning" | "action" | "success" | "critical";
-  source: "ERCOT" | "C2G Agent" | "K8s Controller" | "Financial" | "System";
+  source: "ERCOT" | "StargateOS" | "K8s Controller" | "Financial" | "System";
   message: string;
 }
 

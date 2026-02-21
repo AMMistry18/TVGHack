@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { tickSimulation, triggerManualShed } from "@/lib/simulation";
+import { tickSimulation, triggerManualShed, triggerDemoSpike } from "@/lib/simulation";
 import type { ERCOTData, ComputeData, FinancialData, ActionLogEntry } from "@/lib/simulation";
 import Header from "./Header";
 import GridPriceGauge from "./GridPriceGauge";
@@ -38,7 +38,7 @@ export default function Dashboard() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-pulse text-emerald-400 text-lg font-bold">
-            Initializing C2G Orchestrator...
+            Initializing StargateOS...
           </div>
           <div className="text-gray-500 text-sm mt-2">
             Connecting to ERCOT Real-Time Market
@@ -54,6 +54,7 @@ export default function Dashboard() {
           gridStatus={ercot.gridStatus}
           timestamp={ercot.timestamp}
           onManualShed={triggerManualShed}
+          onDemoSpike={triggerDemoSpike}
           logs={logs}
           ercot={ercot}
           compute={compute}
@@ -104,7 +105,7 @@ export default function Dashboard() {
       </main>
 
       <footer className="border-t border-gray-800 px-6 py-3 text-center text-[10px] text-gray-600">
-        C2G Orchestrator v0.1.0 &middot; ERCOT RTM Simulation &middot; SB 6 Compliant &middot; Built for Texas Grid
+        StargateOS v0.1.0 &middot; ERCOT RTM Simulation &middot; SB 6 Compliant &middot; Built for Texas Grid
       </footer>
     </div>
   );
