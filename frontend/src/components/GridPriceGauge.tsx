@@ -78,7 +78,7 @@ export default function GridPriceGauge({ data }: Props) {
               }}
             />
           </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
+          <div className="absolute inset-0 flex flex-col items-center justify-center pt-16">
             <span
               className={cn(
                 "text-4xl font-black tabular-nums tracking-tight",
