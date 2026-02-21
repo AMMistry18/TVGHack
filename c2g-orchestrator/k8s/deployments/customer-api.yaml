@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-api
+  namespace: default
+  labels:
+    load-type: critical
+    energy-priority: high
+    c2g/managed: "true"
+    app: customer-api
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: customer-api
+  template:
+    metadata:
+      labels:
+        load-type: critical
+        energy-priority: high
+        c2g/managed: "true"
+        app: customer-api
+      annotations:
+        c2g/power-per-replica-kw: "0.2"
+        c2g/idle-power-kw: "5"
+        c2g/shed-threshold-mwh: "999999"
+        c2g/workload-type: cpu-batch
+        c2g/criticality: critical
+        c2g/max-replicas: "10"
+    spec:
+      containers:
+        - name: api
+          image: busybox
+          command: ["sh", "-c", "while true; do sleep 3600; done"]
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "2"]
+      terminationGracePeriodSeconds: 30

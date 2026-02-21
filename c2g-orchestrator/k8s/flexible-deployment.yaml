@@ -1,0 +1,66 @@
+# Apply with: kubectl apply -f k8s/flexible-deployment.yaml
+# This is the "tagged" deployment that C2G will target for load shedding.
+# Labels load-type: flexible and energy-priority: low ensure the Python Sidecar
+# will include this deployment in graceful shed (annotate → grace period → scale to zero).
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama4-training-job
+  namespace: default
+  labels:
+    load-type: flexible
+    energy-priority: low
+    c2g/managed: "true"
+    app: llama4-training
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: llama4-training
+  template:
+    metadata:
+      labels:
+        load-type: flexible
+        energy-priority: low
+        c2g/managed: "true"
+        app: llama4-training
+    spec:
+      # Replace with actual training image and command in production
+      containers:
+        - name: training
+          # image: your-registry/llama4-training:latest  # replace with actual training image
+          image: busybox
+          command: ["sleep", "infinity"]  # replace with actual training command
+          env:
+            - name: C2G_FRAMEWORK
+              value: "pytorch"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            requests:
+              cpu: "4"
+              memory: "16Gi"
+            limits:
+              cpu: "8"
+              memory: "32Gi"
+          volumeMounts:
+            - name: checkpoints
+              mountPath: /checkpoints
+            - name: hooks
+              mountPath: /hooks
+          lifecycle:
+            preStop:
+              exec:
+                command: ["python3", "/hooks/c2g_checkpoint.py"]
+      terminationGracePeriodSeconds: 30  # gives Pre-Stop hook time to run
+      volumes:
+        # replace with PersistentVolumeClaim in production for durable checkpoints
+        - name: checkpoints
+          emptyDir: {}
+        - name: hooks
+          configMap:
+            name: c2g-prestop-hooks
+            defaultMode: 0755

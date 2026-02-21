@@ -1,0 +1,50 @@
+# Apply with: kubectl apply -f k8s/high-priority-deployment.yaml
+# Customer-facing API that must NEVER be shed. Labels load-type: critical and
+# energy-priority: high exclude it from C2G load shed. PodDisruptionBudget
+# ensures at least 4 replicas stay available during node drains.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-api
+  namespace: default
+  labels:
+    load-type: critical
+    energy-priority: high
+    c2g/managed: "true"
+    app: customer-api
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: customer-api
+  template:
+    metadata:
+      labels:
+        load-type: critical
+        energy-priority: high
+        c2g/managed: "true"
+        app: customer-api
+    spec:
+      containers:
+        - name: api
+          image: busybox
+          command: ["sleep", "infinity"]
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: customer-api-pdb
+  namespace: default
+spec:
+  minAvailable: 4
+  selector:
+    matchLabels:
+      app: customer-api

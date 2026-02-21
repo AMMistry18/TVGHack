@@ -1,0 +1,32 @@
+# KEDA TriggerAuthentication — production security practice.
+#
+# Why: ScaledObjects should not hardcode Prometheus URLs or credentials.
+# This object stores the Prometheus server URL (and optionally auth) in a Secret.
+# KEDA references this TriggerAuthentication from the ScaledObject, so we can:
+#   - Rotate or change the Prometheus endpoint without editing ScaledObjects
+#   - Use different endpoints per environment (dev/staging/prod)
+#   - Keep credentials out of Git when using authModes: basic or bearer
+#
+# Create the secret first, then apply this file and reference it in ScaledObject
+# via spec.triggers[].authenticationRef.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prometheus-url-secret
+  namespace: default
+type: Opaque
+stringData:
+  # In production, use a non-hardcoded value (e.g. from a secret manager)
+  url: "http://prometheus-server.monitoring.svc.cluster.local"
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: c2g-prometheus-auth
+  namespace: default
+spec:
+  secretTargetRef:
+    - parameter: serverAddress
+      name: prometheus-url-secret
+      key: url

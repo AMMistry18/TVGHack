@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama4-training-job
+  namespace: default
+  labels:
+    load-type: flexible
+    energy-priority: low
+    c2g/managed: "true"
+    app: llama4-training-job
+spec:
+  replicas: 25
+  selector:
+    matchLabels:
+      app: llama4-training-job
+  template:
+    metadata:
+      labels:
+        load-type: flexible
+        energy-priority: low
+        c2g/managed: "true"
+        app: llama4-training-job
+      annotations:
+        c2g/power-per-replica-kw: "10"
+        c2g/idle-power-kw: "50"
+        c2g/shed-threshold-mwh: "1000"
+        c2g/workload-type: gpu-training
+        c2g/criticality: flexible
+        c2g/max-replicas: "25"
+    spec:
+      containers:
+        - name: training
+          image: nvidia/cuda:12.0-base
+          command: ["sh", "-c", "while true; do sleep 3600; done"]
+          resources:
+            requests:
+              cpu: "8"
+              memory: "64Gi"
+            limits:
+              cpu: "8"
+              memory: "64Gi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "2"]
+      terminationGracePeriodSeconds: 30
