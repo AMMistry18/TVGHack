@@ -66,13 +66,9 @@ export default function ComplianceReportButton({
         throw new Error(data.error || `Report failed: ${res.status}`);
       }
       const blob = await res.blob();
-      const date = new Date().toISOString().slice(0, 10);
-      const filename = `SB6-Audit-Report-${date}.pdf`;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Report generation failed");
     } finally {
