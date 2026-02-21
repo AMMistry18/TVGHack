@@ -1,0 +1,80 @@
+# C2G KEDA ScaledObjects — ERCOT price-based autonomous scaling.
+#
+# Waterfall shedding strategy:
+#   - At $200/MWh we shed data-preprocessing-pipeline first (cheapest, scale down earliest).
+#   - At $500/MWh we shed stable-diffusion-batch (mid-value workload).
+#   - At $1000/MWh we shed llama4-training-job (expensive training).
+# So: lowest-value jobs shed first, expensive training only when grid is truly stressed.
+#
+# The Prometheus exporter exposes ercot_recommended_replicas{deployment="..."} (0 or max).
+# KEDA uses threshold 1 so desiredReplicas = metric value (0 = scale to zero, N = scale to N).
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: c2g-llama4-training-scaler
+  namespace: default
+  annotations:
+    c2g/description: "Scales AI training jobs based on ERCOT real-time electricity price"
+    c2g/version: "1.0.0"
+spec:
+  scaleTargetRef:
+    name: llama4-training-job
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  cooldownPeriod: 300   # 5 minutes — prevents thrashing during volatile prices
+  pollingInterval: 30   # Check every 30 seconds
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local
+        metricName: ercot_realtime_price_mwh
+        threshold: "1"
+        query: |
+          ercot_recommended_replicas{deployment="llama4-training-job"}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: c2g-stable-diffusion-scaler
+  namespace: default
+  annotations:
+    c2g/description: "Scales stable-diffusion batch based on ERCOT price (shed at $500)"
+spec:
+  scaleTargetRef:
+    name: stable-diffusion-batch
+  minReplicaCount: 0
+  maxReplicaCount: 8
+  cooldownPeriod: 300
+  pollingInterval: 30
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local
+        metricName: ercot_realtime_price_mwh
+        threshold: "1"
+        query: |
+          ercot_recommended_replicas{deployment="stable-diffusion-batch"}
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: c2g-preprocessing-scaler
+  namespace: default
+  annotations:
+    c2g/description: "Scales data preprocessing based on ERCOT price (shed at $200 first)"
+spec:
+  scaleTargetRef:
+    name: data-preprocessing-pipeline
+  minReplicaCount: 0
+  maxReplicaCount: 6
+  cooldownPeriod: 300
+  pollingInterval: 30
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus-server.monitoring.svc.cluster.local
+        metricName: ercot_realtime_price_mwh
+        threshold: "1"
+        query: |
+          ercot_recommended_replicas{deployment="data-preprocessing-pipeline"}

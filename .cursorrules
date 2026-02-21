@@ -1,0 +1,59 @@
+# C2G Orchestrator — Cursor Rules
+
+## Project Context
+This is C2G Orchestrator, a hackathon project that bridges ERCOT grid price signals to Kubernetes workload orchestration. It uses FastAPI (Python), Supabase, and a Next.js frontend.
+
+## Architecture
+- **Backend:** `c2g-orchestrator/` — FastAPI app on port 8000
+- **Frontend:** `frontend/` — Next.js app on port 3000
+- **KEDA config:** `c2g-orchestrator/k8s/keda/` — Prometheus exporter + ScaledObjects
+- **Demo training job:** `demo/mock-training-job/` — Simulated AI training with checkpointing
+
+## Key Conventions
+
+### Python (Backend)
+- All database operations go through `db/supabase_client.py` — never call Supabase directly from routers
+- Use `asyncio.to_thread()` for all Supabase calls (sync client wrapped in async)
+- `app_state` in `services/ercot_monitor.py` is the single source of truth for current grid state
+- K8s controller falls back to MOCK mode when no cluster is available — always handle both paths
+- All action logs persist to Supabase `action_logs` table for SB 6 audit compliance
+
+### TypeScript (Frontend)
+- Frontend simulation runs independently in `lib/simulation.ts` — it does NOT require the backend
+- Backend data can be consumed via `/api/dashboard` endpoint or WebSocket `/ws/live`
+- `StatusBar.tsx` handles WS connection with polling fallback
+- Use Recharts for all charts, Tailwind for styling, Lucide for icons
+
+### Supabase
+- Project URL: https://gkyhvikuizoceekuduwe.supabase.co
+- Tables: `grid_events` (timestamp, price_mwh, status), `action_logs` (timestamp, action_taken, pods_scaled, estimated_savings, duration_seconds)
+- All DB writes must be fire-and-forget (log errors, don't crash the polling loop)
+
+### Testing
+- Run pytest from `c2g-orchestrator/` directory
+- `tests/conftest.py` mocks Supabase if not installed
+- API tests use `httpx.AsyncClient` with `ASGITransport`
+
+## File Organization
+```
+c2g-orchestrator/
+  main.py              # FastAPI app + lifespan startup
+  config.py            # Settings from env vars
+  db/supabase_client.py
+  models/schemas.py    # Pydantic models
+  routers/             # admin, grid, metrics, demo, dashboard
+  services/            # ercot_monitor, k8s_controller, savings_calculator
+  k8s/keda/            # Prometheus exporter + KEDA manifests
+  tests/
+
+frontend/
+  src/app/             # Next.js pages
+  src/components/      # React components
+  src/lib/             # simulation.ts, utils.ts
+```
+
+## Don't
+- Don't import Supabase directly in routers — use db/supabase_client.py functions
+- Don't hard-crash on Supabase or K8s failures — always fall back gracefully
+- Don't add dependencies without updating requirements.txt or package.json
+- Don't modify simulation.ts types without checking all component consumers

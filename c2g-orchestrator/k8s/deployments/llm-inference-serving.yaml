@@ -1,0 +1,48 @@
+# Min 6 replicas: Use a PodDisruptionBudget or HPA with minReplicas to enforce.
+# Semi-flexible workloads can be partially shed but must maintain minimum capacity.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-inference-serving
+  namespace: default
+  labels:
+    load-type: semi-flexible
+    energy-priority: high
+    c2g/managed: "true"
+    app: llm-inference-serving
+spec:
+  replicas: 30
+  selector:
+    matchLabels:
+      app: llm-inference-serving
+  template:
+    metadata:
+      labels:
+        load-type: semi-flexible
+        energy-priority: high
+        c2g/managed: "true"
+        app: llm-inference-serving
+      annotations:
+        c2g/power-per-replica-kw: "7"
+        c2g/idle-power-kw: "30"
+        c2g/shed-threshold-mwh: "5000"
+        c2g/workload-type: gpu-inference
+        c2g/criticality: semi-flexible
+        c2g/max-replicas: "30"
+    spec:
+      containers:
+        - name: inference
+          image: nvidia/cuda:12.0-base
+          command: ["sh", "-c", "while true; do sleep 3600; done"]
+          resources:
+            requests:
+              cpu: "8"
+              memory: "64Gi"
+            limits:
+              cpu: "8"
+              memory: "64Gi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "2"]
+      terminationGracePeriodSeconds: 30

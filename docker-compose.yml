@@ -1,0 +1,75 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ./c2g-orchestrator
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - c2g-network
+    restart: unless-stopped
+
+  prometheus-exporter:
+    build:
+      context: ./c2g-orchestrator
+      dockerfile: Dockerfile
+    command: ["uvicorn", "k8s.keda.prometheus_exporter:app", "--host", "0.0.0.0", "--port", "9090"]
+    ports:
+      - "9090:9090"
+    env_file:
+      - .env
+    networks:
+      - c2g-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:8000
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - c2g-network
+    restart: unless-stopped
+
+  mock-training:
+    build:
+      context: ./demo/mock-training-job
+      dockerfile: Dockerfile
+    environment:
+      - CHECKPOINT_DIR=/checkpoints
+    volumes:
+      - training-checkpoints:/checkpoints
+    networks:
+      - c2g-network
+    restart: unless-stopped
+
+networks:
+  c2g-network:
+    driver: bridge
+
+volumes:
+  training-checkpoints:

@@ -1,0 +1,47 @@
+# Min 2 replicas: Use a PodDisruptionBudget or HPA with minReplicas to enforce.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embedding-api
+  namespace: default
+  labels:
+    load-type: semi-flexible
+    energy-priority: high
+    c2g/managed: "true"
+    app: embedding-api
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: embedding-api
+  template:
+    metadata:
+      labels:
+        load-type: semi-flexible
+        energy-priority: high
+        c2g/managed: "true"
+        app: embedding-api
+      annotations:
+        c2g/power-per-replica-kw: "3"
+        c2g/idle-power-kw: "10"
+        c2g/shed-threshold-mwh: "3000"
+        c2g/workload-type: gpu-inference
+        c2g/criticality: semi-flexible
+        c2g/max-replicas: "10"
+    spec:
+      containers:
+        - name: api
+          image: nvidia/cuda:12.0-base
+          command: ["sh", "-c", "while true; do sleep 3600; done"]
+          resources:
+            requests:
+              cpu: "4"
+              memory: "16Gi"
+            limits:
+              cpu: "4"
+              memory: "16Gi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "2"]
+      terminationGracePeriodSeconds: 30
