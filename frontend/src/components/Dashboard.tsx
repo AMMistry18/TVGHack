@@ -49,7 +49,15 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-950">
-      <Header gridStatus={ercot.gridStatus} timestamp={ercot.timestamp} onManualShed={triggerManualShed} />
+      <Header
+          gridStatus={ercot.gridStatus}
+          timestamp={ercot.timestamp}
+          onManualShed={triggerManualShed}
+          logs={logs}
+          ercot={ercot}
+          compute={compute}
+          financial={financial}
+        />
 
       <main className="p-4 md:p-5 lg:p-6 xl:px-8 2xl:px-10 max-w-[2400px] mx-auto">
         <div className="grid grid-cols-12 gap-4 lg:gap-5 xl:gap-6 auto-rows-min">
