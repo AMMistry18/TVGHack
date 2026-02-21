@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Box, CircleDot, CirclePause, CircleSlash } from "lucide-react";
+import { Box, CircleDot, CirclePause, CircleSlash, Cloud } from "lucide-react";
 import type { NamespaceLoad } from "@/lib/simulation";
 
 interface Props {
@@ -14,10 +14,11 @@ const priorityBadge = {
   low: "bg-gray-500/20 text-gray-400 border-gray-500/30",
 };
 
-const statusIcon = {
-  running: { icon: CircleDot, color: "text-emerald-400" },
-  draining: { icon: CirclePause, color: "text-amber-400" },
-  paused: { icon: CircleSlash, color: "text-red-400" },
+const statusConfig = {
+  running: { icon: CircleDot, color: "text-emerald-400", label: "running" },
+  draining: { icon: CirclePause, color: "text-amber-400", label: "draining" },
+  paused: { icon: CircleSlash, color: "text-red-400", label: "paused" },
+  migrated: { icon: Cloud, color: "text-cyan-400", label: "migrated" },
 };
 
 export default function NamespaceTable({ namespaces }: Props) {
@@ -37,13 +38,16 @@ export default function NamespaceTable({ namespaces }: Props) {
               <th className="text-left py-2 font-medium">Namespace</th>
               <th className="text-center py-2 font-medium">Priority</th>
               <th className="text-center py-2 font-medium">Status</th>
-              <th className="text-right py-2 font-medium">Pods</th>
-              <th className="text-right py-2 font-medium">Load (MW)</th>
+              <th className="text-right py-2 font-medium">Local</th>
+              <th className="text-right py-2 font-medium">Remote</th>
+              <th className="text-right py-2 font-medium">MW</th>
             </tr>
           </thead>
           <tbody>
             {namespaces.map((ns) => {
-              const StatusIcon = statusIcon[ns.status].icon;
+              const config = statusConfig[ns.status];
+              const StatusIcon = config.icon;
+              const hasRemote = ns.remotePods > 0;
               return (
                 <tr
                   key={ns.name}
@@ -61,19 +65,22 @@ export default function NamespaceTable({ namespaces }: Props) {
                     </span>
                   </td>
                   <td className="py-2.5">
-                    <div className={cn(
-                      "flex items-center justify-center gap-1",
-                      statusIcon[ns.status].color
-                    )}>
+                    <div className={cn("flex items-center justify-center gap-1", config.color)}>
                       <StatusIcon className="w-3.5 h-3.5" />
-                      <span className="font-medium">{ns.status}</span>
+                      <span className="font-medium">{config.label}</span>
                     </div>
                   </td>
                   <td className="py-2.5 text-right tabular-nums text-gray-300">
                     {ns.pods.toLocaleString()}
                   </td>
+                  <td className={cn(
+                    "py-2.5 text-right tabular-nums",
+                    hasRemote ? "text-cyan-400" : "text-gray-600"
+                  )}>
+                    {hasRemote ? ns.remotePods.toLocaleString() : "—"}
+                  </td>
                   <td className="py-2.5 text-right tabular-nums text-gray-300">
-                    {ns.loadMW.toFixed(1)}
+                    {(ns.loadMW + ns.remoteLoadMW).toFixed(1)}
                   </td>
                 </tr>
               );
@@ -81,6 +88,13 @@ export default function NamespaceTable({ namespaces }: Props) {
           </tbody>
         </table>
       </div>
+
+      {namespaces.some(ns => ns.remotePods > 0) && (
+        <div className="mt-3 pt-3 border-t border-gray-800 flex items-center gap-2 text-[10px] text-cyan-400/70">
+          <Cloud className="w-3 h-3" />
+          <span>Remote pods running on PJM-East (AWS us-east-1)</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { DollarSign, TrendingUp, Shield, Banknote } from "lucide-react";
+import { DollarSign, TrendingUp, Shield, Banknote, Cloud } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { FinancialData, ERCOTData } from "@/lib/simulation";
 
@@ -19,8 +19,7 @@ interface Props {
 }
 
 export default function FinancialView({ financial }: Props) {
-  const { avoidedCost, demandResponseRevenue, criticalUptime, savingsHistory, peakPriceToday, avgPriceToday } = financial;
-  const totalValue = avoidedCost + demandResponseRevenue;
+  const { avoidedCost, demandResponseRevenue, cloudSpend, netSavings, criticalUptime, savingsHistory, peakPriceToday, avgPriceToday } = financial;
 
   return (
     <div className="grid-card p-5 lg:p-6 h-full">
@@ -30,59 +29,76 @@ export default function FinancialView({ financial }: Props) {
         </h3>
         <div className="flex items-center gap-1.5 text-xs text-gray-500">
           <TrendingUp className="w-3.5 h-3.5" />
-          Session Total: <strong className="text-emerald-400">{formatCurrency(totalValue)}</strong>
+          Net Savings: <strong className={cn(netSavings >= 0 ? "text-emerald-400" : "text-red-400")}>{formatCurrency(Math.abs(netSavings))}</strong>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-emerald-500/20 rounded-lg">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="p-1 bg-emerald-500/20 rounded-md">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
             </div>
             <span className="text-[10px] text-emerald-400/70 uppercase tracking-wider font-medium">
               Avoided Cost
             </span>
           </div>
-          <div className="text-2xl font-black text-emerald-400 tabular-nums">
+          <div className="text-xl font-black text-emerald-400 tabular-nums">
             {formatCurrency(avoidedCost)}
           </div>
-          <div className="text-[10px] text-gray-500 mt-1">
-            vs. spot price exposure
+          <div className="text-[10px] text-gray-500 mt-0.5">
+            vs. spot price
           </div>
         </div>
 
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-blue-500/20 rounded-lg">
-              <Banknote className="w-4 h-4 text-blue-400" />
+        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="p-1 bg-blue-500/20 rounded-md">
+              <Banknote className="w-3.5 h-3.5 text-blue-400" />
             </div>
             <span className="text-[10px] text-blue-400/70 uppercase tracking-wider font-medium">
               DR Revenue
             </span>
           </div>
-          <div className="text-2xl font-black text-blue-400 tabular-nums">
+          <div className="text-xl font-black text-blue-400 tabular-nums">
             {formatCurrency(demandResponseRevenue)}
           </div>
-          <div className="text-[10px] text-gray-500 mt-1">
-            ERCOT demand response credits
+          <div className="text-[10px] text-gray-500 mt-0.5">
+            ERCOT credits
           </div>
         </div>
 
-        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-violet-500/20 rounded-lg">
-              <Shield className="w-4 h-4 text-violet-400" />
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="p-1 bg-amber-500/20 rounded-md">
+              <Cloud className="w-3.5 h-3.5 text-amber-400" />
+            </div>
+            <span className="text-[10px] text-amber-400/70 uppercase tracking-wider font-medium">
+              Cloud Spend
+            </span>
+          </div>
+          <div className={cn("text-xl font-black tabular-nums", cloudSpend > 0 ? "text-amber-400" : "text-gray-600")}>
+            {formatCurrency(cloudSpend)}
+          </div>
+          <div className="text-[10px] text-gray-500 mt-0.5">
+            PJM burst cost
+          </div>
+        </div>
+
+        <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl p-3">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <div className="p-1 bg-violet-500/20 rounded-md">
+              <Shield className="w-3.5 h-3.5 text-violet-400" />
             </div>
             <span className="text-[10px] text-violet-400/70 uppercase tracking-wider font-medium">
               Critical SLO
             </span>
           </div>
-          <div className="text-2xl font-black text-violet-400 tabular-nums">
+          <div className="text-xl font-black text-violet-400 tabular-nums">
             {criticalUptime}%
           </div>
-          <div className="text-[10px] text-gray-500 mt-1">
-            customer-facing uptime
+          <div className="text-[10px] text-gray-500 mt-0.5">
+            uptime maintained
           </div>
         </div>
       </div>
@@ -112,11 +128,12 @@ export default function FinancialView({ financial }: Props) {
               }}
               formatter={(value: number, name: string) => [
                 formatCurrency(value),
-                name === "avoided" ? "Avoided Cost" : "DR Revenue",
+                name === "avoided" ? "Avoided Cost" : name === "revenue" ? "DR Revenue" : "Cloud Cost",
               ]}
             />
             <Bar dataKey="avoided" fill="#10b981" radius={[2, 2, 0, 0]} />
             <Bar dataKey="revenue" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="cloudCost" fill="#f59e0b" radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

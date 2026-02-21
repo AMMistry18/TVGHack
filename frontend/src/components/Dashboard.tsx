@@ -11,6 +11,7 @@ import DeltaIndicator from "./DeltaIndicator";
 import ActionFeed from "./ActionFeed";
 import FinancialView from "./FinancialView";
 import NamespaceTable from "./NamespaceTable";
+import MigrationStatus from "./MigrationStatus";
 
 export default function Dashboard() {
   const [ercot, setErcot] = useState<ERCOTData | null>(null);
@@ -73,11 +74,14 @@ export default function Dashboard() {
             <ComputeLoadChart data={compute} />
           </div>
 
-          {/* Row 2: Namespaces + LMP Price History */}
+          {/* Row 2: Namespaces + Migration + LMP */}
           <div className="col-span-12 lg:col-span-5 xl:col-span-4">
             <NamespaceTable namespaces={compute.namespaces} />
           </div>
-          <div className="col-span-12 lg:col-span-7 xl:col-span-8">
+          <div className="col-span-12 md:col-span-6 lg:col-span-3 xl:col-span-3">
+            <MigrationStatus migration={compute.migration} />
+          </div>
+          <div className="col-span-12 md:col-span-6 lg:col-span-4 xl:col-span-5">
             <LMPChart data={ercot} />
           </div>
 
