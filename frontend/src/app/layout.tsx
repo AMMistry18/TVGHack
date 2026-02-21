@@ -1,0 +1,23 @@
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "C2G Orchestrator | Compute-to-Grid",
+  description:
+    "Real-time ERCOT grid response automation for data center workload management. SB 6 compliant.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="dark">
+      <body className={inter.className} suppressHydrationWarning>{children}</body>
+    </html>
+  );
+}
